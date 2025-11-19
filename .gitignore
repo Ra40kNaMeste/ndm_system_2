@@ -516,48 +516,6 @@ local.properties
 *.so.*
 *.dll
 *.dylib
-
-# Qt-es
-object_script.*.Release
-object_script.*.Debug
-*_plugin_import.cpp
-/.qmake.cache
-/.qmake.stash
-*.pro.user
-*.pro.user.*
-*.qbs.user
-*.qbs.user.*
-*.moc
-moc_*.cpp
-moc_*.h
-qrc_*.cpp
-ui_*.h
-*.qmlc
-*.jsc
-Makefile*
-*build-*
-*.qm
-*.prl
-
-# Qt unit tests
-target_wrapper.*
-
-# QtCreator
-*.autosave
-
-# QtCreator Qml
-*.qmlproject.user
-*.qmlproject.user.*
-
-# QtCreator CMake
-CMakeLists.txt.user*
-
-# QtCreator 4.8< compilation database 
-compile_commands.json
-
-# QtCreator local machine specific files for imported projects
-*creator.user*
-
 ##### VisualStudio
 ##### VisualStudio
 ## Ignore Visual Studio temporary files, build results, and
@@ -696,7 +654,7 @@ _ReSharper*/
 # TeamCity is a build add-in
 _TeamCity*
 
-# DotCover is a Code Coverage Tool
+DotCover is a Code Coverage Tool
 *.dotCover
 
 # AxoCover is a Code Coverage Tool
@@ -935,22 +893,6 @@ gradle-app.setting
 # Cache of project
 .gradletasknamecache
 
-# # Work around https://youtrack.jetbrains.com/issue/IDEA-116898
-# gradle/wrapper/gradle-wrapper.properties
-
-##### CMake
-CMakeLists.txt.user
-CMakeCache.txt
-CMakeFiles
-CMakeScripts
-Testing
-Makefile
-cmake_install.cmake
-install_manifest.txt
-compile_commands.json
-CTestTestfile.cmake
-_deps
-
 ##### C++
 # Prerequisites
 *.d
@@ -1046,18 +988,3 @@ dkms.conf
 *.uf2
 # Raspberry Pi Pico disassembler file
 *.dis
-@locnnil
-locnnil
-commented
-on Feb 14, 2022
-•
-
-Really thanks! This gist helps a lot!
-I have some suggestions to make this even better!
-
-# Raspberry Pi Pico Object file
-*.uf2
-# Raspberry Pi Pico disassembler file
-*.dis
-# C/C++ binary extension file
-*.bin
