@@ -1,4 +1,3 @@
-#include <cerrno>
 #include <cstdio>
 #include <iostream>
 #include <netinet/in.h>
@@ -35,7 +34,23 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 
-  struct epoll_event ev, events[MAX_EVENTS];
+  printf("udp...\n");
+  int udp_sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+  if (udp_sock == -1) {
+    handle_error("udp_sock");
+    return -1;
+  }
+  struct sockaddr_in udp_addr;
+  udp_addr.sin_family = AF_INET;
+  udp_addr.sin_port = htons(PORT);
+  udp_addr.sin_addr.s_addr = INADDR_ANY;
+
+  if (bind(udp_sock, (struct sockaddr *)&udp_addr, sizeof(udp_addr)) == -1) {
+    handle_error("bind");
+    return -1;
+  }
+
+  struct epoll_event ev, udp_ev, events[MAX_EVENTS];
   int conn_sock, nfds, epollfd;
 
   /* Code to set up listening socket, 'listen_sock',
@@ -54,13 +69,19 @@ int main(int argc, char *argv[]) {
     exit(EXIT_FAILURE);
   }
 
+  udp_ev.events = EPOLLIN;
+  udp_ev.data.fd = udp_sock;
+  if (epoll_ctl(epollfd, EPOLL_CTL_ADD, udp_sock, &udp_ev) == -1) {
+    perror("udp epoll_ctl: listen_sock");
+    exit(EXIT_FAILURE);
+  }
+
   for (;;) {
     nfds = epoll_wait(epollfd, events, MAX_EVENTS, -1);
     if (nfds == -1) {
       perror("epoll_wait");
       exit(EXIT_FAILURE);
     }
-
     for (int n = 0; n < nfds; ++n) {
       if (events[n].data.fd == tcp_sock) {
         struct sockaddr_in addr;
@@ -78,6 +99,18 @@ int main(int argc, char *argv[]) {
           perror("epoll_ctl: conn_sock");
           exit(EXIT_FAILURE);
         }
+      } else if (events[n].data.fd == udp_sock) {
+        printf("udp received\n");
+        struct sockaddr_in addr;
+        socklen_t addrlen = sizeof(addr);
+        char buf[BUFFER_SIZE];
+        ssize_t size_buf = recvfrom(events[n].data.fd, buf, BUFFER_SIZE - 1, 0,
+                                    (sockaddr *)&addr, &addrlen);
+        if (size_buf != -1) {
+          buf[size_buf] = '\0';
+          sendto(udp_sock, buf, size_buf, 0, (sockaddr *)&addr, addrlen);
+        }
+
       } else {
 
         int client_sock = events[n].data.fd;

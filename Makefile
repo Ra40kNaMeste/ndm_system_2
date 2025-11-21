@@ -4,5 +4,5 @@ main: main.o
 	g++ -o main main.o
 
 main.o:
-	g++ $(CPPFLAGS) -c main.cpp
+	g++ $(CPPFLAGS) -c main.cxx
 
