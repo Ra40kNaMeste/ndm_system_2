@@ -37,7 +37,7 @@ DEPS := $(OBJS:.o=.d)
 INC_DIRS := $(shell find $(SRC_DIRS) -type d)
 INC_FLAGS := $(addprefix -I,$(INC_DIRS))
 CXXFLAGS := -I$(NDM_SERVER_INC) $(INC_FLAGS) -MMD -MP -std=c++20
-LDFLAGS := -lm -lpthread
+LDFLAGS := -lm -lpthread  -lboost_program_options
 
 $(BUILD_DIR)/$(TARGET_EXEC): $(OBJS) | $(NDM_SERVER_LIB)
 	$(CXX) $(OBJS) $(NDM_SERVER_LIB) -o $@ $(LDFLAGS)
