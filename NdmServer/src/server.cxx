@@ -201,12 +201,7 @@ void *ndm::NdmServer::listenThread(void *args) {
 void ndm::NdmServer::startListenSockets() {
   for (int sock : _listenTcpSockets) {
     if (listen(sock, CONNECTION_MAX_SIZE) == -1) {
-      throw std::runtime_error("tcp listen");
-    }
-  }
-  for (int sock : _listenUdpSockets) {
-    if (listen(sock, CONNECTION_MAX_SIZE) == -1) {
-      throw std::runtime_error("udp listen");
+      throw std::runtime_error("listen");
     }
   }
 }
