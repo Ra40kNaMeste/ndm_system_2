@@ -9,13 +9,14 @@
 #include <exception>
 #include <memory>
 #include <netinet/in.h>
+#include <pthread.h>
 #include <stdexcept>
 #include <sys/epoll.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
 
-ndm::NdmServer::NdmServer() {}
+ndm::NdmServer::NdmServer() { pthread_mutex_init(&_isRunningMutex, NULL); }
 ndm::NdmServer::~NdmServer() {
   _isRunning = false;
   for (auto sock : _listenTcpSockets) {
@@ -30,6 +31,13 @@ ndm::NdmServer::~NdmServer() {
     if (close(sock) == -1) {
     }
   }
+  pthread_mutex_destroy(&_isRunningMutex);
+}
+
+void ndm::NdmServer::setIsRunning(bool value) {
+  pthread_mutex_lock(&_isRunningMutex);
+  _isRunning = value;
+  pthread_mutex_unlock(&_isRunningMutex);
 }
 
 void ndm::NdmServer::addTcp(int port) {
@@ -47,21 +55,42 @@ void ndm::NdmServer::addTcp(int port) {
   }
   _listenTcpSockets.push_back(tcp_sock);
 }
-void ndm::NdmServer::addUdp(int port) {}
+void ndm::NdmServer::addUdp(int port) {
+  int udp_sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+  if (udp_sock == -1) {
+    throw std::runtime_error("create socket failure");
+  }
+  struct sockaddr_in udp_addr;
+  udp_addr.sin_family = AF_INET;
+  udp_addr.sin_port = htons(port);
+  udp_addr.sin_addr.s_addr = INADDR_ANY;
+  if (bind(udp_sock, (struct sockaddr *)&udp_addr, sizeof(udp_addr)) == -1) {
+    throw std::runtime_error("bind socket failure. Try change target port");
+  }
+  _listenUdpSockets.push_back(udp_sock);
+}
 
-void ndm::NdmServer::run() {
+void ndm::NdmServer::run(int thread_count) {
   _isRunning = true;
-  for (int sock : _listenTcpSockets) {
-    if (listen(sock, CONNECTION_MAX_SIZE) == -1) {
-      throw std::runtime_error("listen");
-    }
+  pthread_t threads[thread_count];
+  for (int i = 0; i < thread_count; ++i) {
+    pthread_create(threads + i, NULL, listenThread, this);
   }
-  for (int sock : _listenUdpSockets) {
-    if (listen(sock, CONNECTION_MAX_SIZE) == -1) {
-      throw std::runtime_error("listen");
-    }
+  startListenSockets();
+  while (_isRunning) {
+    sleep(1);
+  }
+  for (int i = 0; i < thread_count; ++i) {
+    pthread_cancel(threads[i]);
   }
 
+  for (int i = 0; i < thread_count; ++i) {
+    pthread_join(threads[i], NULL);
+  }
+}
+
+void *ndm::NdmServer::listenThread(void *args) {
+  auto instance = static_cast<NdmServer *>(args);
   struct epoll_event events[MAX_EVENTS];
   int conn_sock, nfds, epollfd;
 
@@ -69,22 +98,21 @@ void ndm::NdmServer::run() {
   if (epollfd == -1) {
     throw std::runtime_error("epoll create");
   }
-  struct epoll_event ev{EPOLLIN};
-  for (int sock : _listenUdpSockets) {
+  struct epoll_event ev{EPOLLIN | EPOLLET};
+  for (int sock : instance->_listenUdpSockets) {
     ev.data.fd = sock;
     if (epoll_ctl(epollfd, EPOLL_CTL_ADD, sock, &ev) == -1) {
       std::runtime_error("EPOLL ADD SOCKET");
     }
   }
-  ev.events |= EPOLLHUP;
-  for (int sock : _listenTcpSockets) {
+  for (int sock : instance->_listenTcpSockets) {
     ev.data.fd = sock;
     if (epoll_ctl(epollfd, EPOLL_CTL_ADD, sock, &ev) == -1) {
       std::runtime_error("EPOLL ADD SOCKET");
     }
   }
 
-  while (_isRunning) {
+  while (instance->_isRunning) {
 
     nfds = epoll_wait(epollfd, events, MAX_EVENTS, -1);
     if (nfds == -1) {
@@ -93,14 +121,17 @@ void ndm::NdmServer::run() {
     }
 
     for (int n = 0; n < nfds; ++n) {
-      if (std::find(_listenTcpSockets.begin(), _listenTcpSockets.end(),
-                    events[n].data.fd) != _listenTcpSockets.end()) {
+      if (std::find(instance->_listenTcpSockets.begin(),
+                    instance->_listenTcpSockets.end(),
+                    events[n].data.fd) != instance->_listenTcpSockets.end()) {
         if (tcpConnect(events[n].data.fd, epollfd) == -1) {
           // Warning log
         }
-        _users[events[n].data.fd] = User{};
-      } else if (std::find(_listenUdpSockets.begin(), _listenUdpSockets.end(),
-                           events[n].data.fd) != _listenUdpSockets.end()) {
+        instance->_users[events[n].data.fd] = User{};
+      } else if (std::find(instance->_listenUdpSockets.begin(),
+                           instance->_listenUdpSockets.end(),
+                           events[n].data.fd) !=
+                 instance->_listenUdpSockets.end()) {
 
         int user_sock = events[n].data.fd;
         struct sockaddr_in addr;
@@ -109,18 +140,18 @@ void ndm::NdmServer::run() {
         ssize_t size_buf = recvfrom(user_sock, buf, BUFFER_SIZE - 1, 0,
                                     (sockaddr *)&addr, &addrlen);
         if (size_buf != -1) {
-          if (_users.find(user_sock) == _users.end())
-            _users[user_sock] = User{};
+          if (instance->_users.find(user_sock) == instance->_users.end())
+            instance->_users[user_sock] = User{};
           else
-            _users[user_sock].update_time();
+            instance->_users[user_sock].update_time();
 
           buf[size_buf] = '\0';
 
-          requestHandle(buf, size_buf + 1,
-                        [&user_sock, &addr, &addrlen](char *buf, int n) {
-                          return sendto(user_sock, buf, n, 0, (sockaddr *)&addr,
-                                        addrlen);
-                        });
+          instance->requestHandle(
+              buf, size_buf + 1,
+              [&user_sock, &addr, &addrlen](char *buf, int n) {
+                return sendto(user_sock, buf, n, 0, (sockaddr *)&addr, addrlen);
+              });
         }
 
       } else {
@@ -132,39 +163,54 @@ void ndm::NdmServer::run() {
         // Warning if message length > sizebuf-1. Refactoring
         if (size_buf != -1) {
           if (size_buf == 0) {
-            _users[user_sock].is_closed = true;
+            instance->_users[user_sock].is_closed = true;
           } else {
-            if (_users.find(user_sock) == _users.end())
-              _users[user_sock] = User{};
+            if (instance->_users.find(user_sock) == instance->_users.end())
+              instance->_users[user_sock] = User{};
             else
-              _users[user_sock].update_time();
+              instance->_users[user_sock].update_time();
 
             buf[size_buf] = '\0';
-            requestHandle(buf, size_buf + 1, [user_sock](char *buf, int n) {
-              return send(user_sock, buf, n, 0);
-            });
+            instance->requestHandle(buf, size_buf + 1,
+                                    [user_sock](char *buf, int n) {
+                                      return send(user_sock, buf, n, 0);
+                                    });
           }
         }
       }
     }
   }
 
-  ev.events = EPOLLIN;
-  for (int sock : _listenUdpSockets) {
+  ev.events = EPOLLIN | EPOLLET;
+  for (int sock : instance->_listenUdpSockets) {
     ev.data.fd = sock;
     if (epoll_ctl(epollfd, EPOLL_CTL_DEL, sock, &ev) == -1) {
       std::runtime_error("EPOLL DEL SOCKET");
     }
   }
-  ev.events |= EPOLLHUP;
-  for (int sock : _listenTcpSockets) {
+  for (int sock : instance->_listenTcpSockets) {
     ev.data.fd = sock;
     if (epoll_ctl(epollfd, EPOLL_CTL_DEL, sock, &ev) == -1) {
       std::runtime_error("EPOLL DEL SOCKET");
     }
   }
   close(epollfd);
+  return NULL;
 }
+
+void ndm::NdmServer::startListenSockets() {
+  for (int sock : _listenTcpSockets) {
+    if (listen(sock, CONNECTION_MAX_SIZE) == -1) {
+      throw std::runtime_error("tcp listen");
+    }
+  }
+  for (int sock : _listenUdpSockets) {
+    if (listen(sock, CONNECTION_MAX_SIZE) == -1) {
+      throw std::runtime_error("udp listen");
+    }
+  }
+}
+
 int ndm::NdmServer::tcpConnect(int sock, int epollfd) {
   struct sockaddr_in addr;
   socklen_t addrlen = sizeof(addr);

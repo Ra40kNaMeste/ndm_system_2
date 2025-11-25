@@ -52,7 +52,7 @@ int main(int argc, char *argv[]) {
 
   rootMiddleware->setSuccessor(mirror);
   server.setRootMiddleware(rootMiddleware);
-  server.run();
+  server.run(10);
 
   return 0;
 }
