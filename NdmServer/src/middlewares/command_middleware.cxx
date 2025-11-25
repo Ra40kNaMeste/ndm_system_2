@@ -21,10 +21,11 @@ void ndm::CommandMiddleware::handle_request(
     auto index = _commands.find(command);
     if (index != _commands.end()) {
       index->second(request, response);
-      return;
+    } else {
+      response->response = "unknown command";
     }
-  }
-  if (_successor != nullptr)
+
+  } else if (_successor != nullptr)
     _successor->handle_request(request, response);
 }
 
