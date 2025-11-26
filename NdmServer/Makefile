@@ -19,5 +19,5 @@ $(BUILD_DIR)/%.cxx.o: %.cxx
 
 .PHONY: clean
 clean:
-	rm -r $(BUILD_DIR)
+	rm -r $(BUILD_DIR) || true
 -include $(DEPS)

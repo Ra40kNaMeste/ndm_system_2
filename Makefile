@@ -57,9 +57,11 @@ clean:
 	rm -rf $(BUILD_DIR)
 
 install:
+	mkdir -p $(DESTDIR)/usr/bin
 	install $(BUILD_DIR)/$(TARGET_EXEC) $(DESTDIR)/usr/bin
+	mkdir -p $(DESTDIR)/usr/lib/systemd/system
 	install ./install/ndm_service.service $(DESTDIR)/usr/lib/systemd/system/ndm_server.service
 
 uninstall:
-	rm -rf $(DESTDIR)/usr/local/bin/$(TARGET_EXEC)
-	rm -rf $(DESTDIR)/usr/lib/systemd/system/ndm_server.service
+	rm -rf $(DESTDIR)/usr/local/bin/$(TARGET_EXEC) || true
+	rm -rf $(DESTDIR)/usr/lib/systemd/system/ndm_server.service || true

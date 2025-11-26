@@ -23,8 +23,6 @@ build() {
   make
 }
 package() {
-  mkdir -p $pkgdir/usr/bin
-  mkdir -p $pkgdir/usr/lib/systemd/system
   cd ${pkgname}
   make DESTDIR="$pkgdir" install
 }
