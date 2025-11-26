@@ -7,11 +7,12 @@ license=('GPL')
 pkgdesc="test task for ndm system company"
 url="https://github.com/Ra40kNaMeste/ndm_system_2/tree/main/src"
 
-depends=('boost' 'boost-libs')
+depends=('boost-libs')
 makedepends=('git' 'make' 'gcc')
 provides=('ndmserver')
 
-source=(${pkgname}::git+https://github.com/Ra40kNaMeste/ndm_system_2.git)
+_commit="6809e36ebf7af0ec1553a20c3b66ebc2e163f432"
+source=(${pkgname}::git+https://github.com/Ra40kNaMeste/ndm_system_2.git#commit=${_commit})
 sha256sums=('SKIP')
 pkgver() {
   cd ${pkgname}
@@ -22,6 +23,8 @@ build() {
   make
 }
 package() {
+  mkdir -p $pkgdir/usr/bin
+  mkdir -p $pkgdir/usr/lib/systemd/system
   cd ${pkgname}
-  make install
+  make DESTDIR="$pkgdir" install
 }
