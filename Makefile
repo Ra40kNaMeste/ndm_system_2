@@ -24,7 +24,7 @@
 # 	rm -f main.o main
 #
 #
-TARGET_EXEC := server
+TARGET_EXEC := ndmserver
 BUILD_DIR := ./build
 SRC_DIRS := ./src
 NDM_SERVER_DIR := ./NdmServer
@@ -51,7 +51,15 @@ $(BUILD_DIR)/%.o: %.cxx
 
 -include $(DEPS)
 
-.PHONY: clean
+.PHONY: clean install uninstall
 clean:
 	$(MAKE) -C $(NDM_SERVER_DIR) clean
 	rm -rf $(BUILD_DIR)
+
+install:
+	install $(BUILD_DIR)/$(TARGET_EXEC) $(DESTDIR)/usr/local/bin
+	install ./install/ndm_service.service $(DESTDIR)/usr/lib/systemd/system/ndm_server.service
+
+uninstall:
+	rm -rf $(DESTDIR)/usr/local/bin/$(TARGET_EXEC)
+	rm -rf $(DESTDIR)/usr/lib/systemd/system/ndm_server.service

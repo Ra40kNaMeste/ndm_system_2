@@ -1,0 +1,27 @@
+pkgname=ndm-system
+pkgver=1.0
+pkgrel=1
+arch=('x86_64')
+license=('GPL')
+
+pkgdesc="test task for ndm system company"
+url="https://github.com/Ra40kNaMeste/ndm_system_2/tree/main/src"
+
+depends=('boost' 'boost-libs')
+makedepends=('git' 'make' 'gcc')
+provides=('ndmserver')
+
+source=(${pkgname}::git+https://github.com/Ra40kNaMeste/ndm_system_2.git)
+sha256sums=('SKIP')
+pkgver() {
+  cd ${pkgname}
+  git describe --tags | sed 's/^v//;s/-/+/g'
+}
+build() {
+  cd ${pkgname}
+  make
+}
+package() {
+  cd ${pkgname}
+  make install
+}
