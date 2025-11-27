@@ -1,0 +1,4 @@
+./*
+!PKGBUILD
+!*.deb
+!ndm_service.service
