@@ -35,6 +35,7 @@ ndm::NdmServer::~NdmServer() {
 }
 
 void ndm::NdmServer::setIsRunning(bool value) {
+  // На всяк случай сделал через мьютексы. Так то и без них работает, но страшно
   pthread_mutex_lock(&_isRunningMutex);
   _isRunning = value;
   pthread_mutex_unlock(&_isRunningMutex);
@@ -72,14 +73,18 @@ void ndm::NdmServer::addUdp(int port) {
 
 void ndm::NdmServer::run(int thread_count) {
   _isRunning = true;
+  // Запуск обработки в отдельных потоках
   pthread_t threads[thread_count];
   for (int i = 0; i < thread_count; ++i) {
     pthread_create(threads + i, NULL, listenThread, this);
   }
   startListenSockets();
+  // Ждём сообщения на закрытие
   while (_isRunning) {
     sleep(1);
   }
+
+  // Закрываем потоки
   for (int i = 0; i < thread_count; ++i) {
     pthread_cancel(threads[i]);
   }
@@ -113,13 +118,14 @@ void *ndm::NdmServer::listenThread(void *args) {
   }
 
   while (instance->_isRunning) {
-
+    // создаём epoll
     nfds = epoll_wait(epollfd, events, MAX_EVENTS, -1);
     if (nfds == -1) {
       perror("epoll_wait");
       exit(EXIT_FAILURE);
     }
 
+    // Обработка событий epoll
     for (int n = 0; n < nfds; ++n) {
       if (std::find(instance->_listenTcpSockets.begin(),
                     instance->_listenTcpSockets.end(),
@@ -165,6 +171,8 @@ void *ndm::NdmServer::listenThread(void *args) {
           if (size_buf == 0) {
             instance->_users[user_sock].is_closed = true;
           } else {
+            // Повторяющийся код. Надо в отдельную функцию выносить по-хорошему,
+            // но его мало
             if (instance->_users.find(user_sock) == instance->_users.end())
               instance->_users[user_sock] = User{};
             else
@@ -198,6 +206,8 @@ void *ndm::NdmServer::listenThread(void *args) {
   return NULL;
 }
 
+void ndm::NdmServer::stop() { setIsRunning(false); }
+
 void ndm::NdmServer::startListenSockets() {
   for (int sock : _listenTcpSockets) {
     if (listen(sock, CONNECTION_MAX_SIZE) == -1) {
@@ -224,19 +234,21 @@ ndm::NdmServer::requestHandle(const char *buf, const int &size_buf,
   if (_root_middleware == nullptr) {
     return 0;
   }
-  auto request = std::make_shared<RequestContext>(buf, size_buf);
-  request->setUsers(&_users);
+  auto request = std::make_shared<RequestContext>(buf, size_buf, &_users);
 
   auto response = std::make_shared<ResponseContext>();
+  try {
 
-  _root_middleware->handle_request(request, response);
-  if (response->canShutdown()) {
-    _isRunning = false;
+    _root_middleware->handle_request(request, response);
+  } catch (...) {
+    // Мы обеспокоены о логировании, но не сегодня
   }
   if (send(response->response.data(), response->response.size()) == -1) {
     return -1;
   }
-
+  if (response->canShutdown()) {
+    setIsRunning(false);
+  }
   return 0;
 }
 

@@ -7,11 +7,9 @@
 #include <boost/program_options/value_semantic.hpp>
 #include <boost/program_options/variables_map.hpp>
 #include <chrono>
-#include <cstdio>
 #include <ctime>
 #include <iomanip>
 #include <iostream>
-#include <memory>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <ostream>
@@ -22,10 +20,9 @@
 
 namespace po = boost::program_options;
 
-#define MAX_EVENTS 10
-#define PORT 1011
-
+// Возвращает текущую дату и время сервера в формате, как в задании
 std::string getCurrentDateTime();
+
 std::shared_ptr<ndm::MiddlewareBase> makeRootMiddleware();
 int parseCommandArgments(int argc, char *argv[], po::variables_map &vm);
 
@@ -38,18 +35,28 @@ int main(int argc, char *argv[]) {
   int thread_count = vm["thread_count"].as<int>();
 
   ndm::NdmServer server{};
+  // Добавляем сокеты для прослушивания
   server.addTcp(port);
   server.addUdp(port);
   server.setRootMiddleware(makeRootMiddleware());
+  // Просто сообщаем где сервер открыт
   std::cout << "opened server on the port " << port << std::endl;
-  server.run(thread_count);
+  // запускаем сервер
+  try {
+
+    server.run(thread_count);
+  } catch (...) {
+    // Мы обеспокоены ошибкой
+    std::cout << "server closed with a error" << std::endl;
+    return -1;
+  }
   return 0;
 }
 
 int parseCommandArgments(int argc, char *argv[], po::variables_map &vm) {
   int port, buffer_size, thread_count;
   po::options_description desc("Allowed options");
-  desc.add_options()("help", "Show this message")(
+  desc.add_options()("help,h", "Show this message")(
       "port,p", po::value<int>(&port)->default_value(1010), "port of server")(
       "thread_count,t", po::value<int>(&thread_count)->default_value(10),
       "received thread count");
@@ -72,11 +79,14 @@ std::string getCurrentDateTime() {
   return ss.str();
 }
 std::shared_ptr<ndm::MiddlewareBase> makeRootMiddleware() {
+  // Создаём 2 мидлвара
   auto mirror = std::make_shared<ndm::MirrorMiddleware>();
   auto rootMiddleware = std::make_shared<ndm::CommandMiddleware>();
+  // Добавляем команды
   rootMiddleware->addCommand(
       "shutdown", [](std::shared_ptr<const ndm::RequestContext> request,
                      std::shared_ptr<ndm::ResponseContext> response) {
+        response->response = "shutdown";
         response->shutdown();
       });
   rootMiddleware->addCommand(
@@ -92,6 +102,7 @@ std::shared_ptr<ndm::MiddlewareBase> makeRootMiddleware() {
         response->response = getCurrentDateTime();
       });
 
+  // связываем их
   rootMiddleware->setSuccessor(mirror);
   return rootMiddleware;
 }

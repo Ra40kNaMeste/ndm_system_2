@@ -2,15 +2,13 @@
 #define REQUESTCONTEXT_CXX
 #include "request_context.h"
 
-ndm::RequestContext::RequestContext(const char *buf, const int size_buf)
+ndm::RequestContext::RequestContext(const char *buf, const int size_buf,
+                                    const std::map<int, User> *users)
     : _size_buf(size_buf) {
+  _users = users;
   _buf = buf;
 }
 ndm::RequestContext::~RequestContext() {}
-
-void ndm::RequestContext::setUsers(const std::map<int, User> *users) {
-  _users = users;
-}
 
 unsigned int ndm::RequestContext::getConnectedUserCount() const {
   return std::count_if(

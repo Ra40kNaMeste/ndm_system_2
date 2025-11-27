@@ -9,16 +9,20 @@ namespace ndm {
 
 class RequestContext {
 public:
-  RequestContext(const char *buf, const int size_buf);
+  RequestContext(const char *buf, const int size_buf,
+                 const std::map<int, User> *users);
   ~RequestContext();
 
-  void setUsers(const std::map<int, User> *users);
-
+  // Возвращает количество подключённых пользователей
   unsigned int getConnectedUserCount() const;
 
+  // Возвращает количество всех пользователей
   unsigned int getAllUserCount() const;
 
+  // Возвращает принятые данные
   void getData(const char *buf, int &size_buf);
+
+  // Возвращает принятые данные в качестве сообщения
   std::string getMessage() const;
 
   const std::map<int, User> *_users;

@@ -3,6 +3,7 @@
 
 #include "middleware_base.h"
 namespace ndm {
+// Просто отражает запрос назад
 class MirrorMiddleware : public MiddlewareBase {
 public:
   MirrorMiddleware() : MiddlewareBase() {}

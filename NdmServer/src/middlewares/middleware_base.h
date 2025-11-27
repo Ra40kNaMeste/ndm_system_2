@@ -5,6 +5,8 @@
 #include "response_context.h"
 #include <memory>
 namespace ndm {
+// Сделал всё на миндварах что-то вроде asp.net. handle_request - обработка
+// запроса. Если запрос не обработан - отправляем дальше в _successor
 class MiddlewareBase {
 public:
   MiddlewareBase() {}

@@ -11,18 +11,33 @@
 #include <vector>
 namespace ndm {
 
+// max events для epool
 #define MAX_EVENTS 10
-#define CONNECTION_MAX_SIZE 10
+
+// максимальное количество подключений для tcp-сокета
+#define CONNECTION_MAX_SIZE 40
+
+// Буфер для принимаемый сообщений.
 #define BUFFER_SIZE 1024
+
+// Сервак. Можно добавить логгирование ошибок, но мне лень. Это всё-таки
+// тестовое)
 class NdmServer {
 public:
   NdmServer();
   ~NdmServer();
+
+  // Добавление прослушиваемого порта
   void addTcp(int port);
   void addUdp(int port);
+
+  // Запуск сервера. thread_count - количество потоков обработки
   void run(int thread_count);
+
+  // остановка сервера
   void stop();
 
+  // Установка первого мидлвара
   void setRootMiddleware(std::shared_ptr<MiddlewareBase> value);
   std::shared_ptr<MiddlewareBase> getRootMiddleware();
 

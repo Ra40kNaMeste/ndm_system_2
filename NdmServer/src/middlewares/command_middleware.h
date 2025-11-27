@@ -9,6 +9,9 @@
 #include <memory>
 #include <set>
 
+// Обрабатывает команды. Все команды начинаются на /. Если команда не найдена -
+// отправляет соответсвующее сообщение. Если сообщение не команда - отправляет
+// дальше
 namespace ndm {
 class CommandMiddleware : public MiddlewareBase {
 public:
