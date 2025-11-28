@@ -30,6 +30,7 @@ std::shared_ptr<ndm::MiddlewareBase> makeRootMiddleware();
 int parseCommandArgments(int argc, char *argv[], po::variables_map &vm);
 
 int main(int argc, char *argv[]) {
+  // Парсим аргументы из командной строки
   po::variables_map vm;
   if (parseCommandArgments(argc, argv, vm)) {
     return 1;
@@ -37,12 +38,22 @@ int main(int argc, char *argv[]) {
   int port = vm["port"].as<int>();
   int thread_count = vm["thread_count"].as<int>();
 
+  // Создаём сервер
   ndm::NdmServer server{};
+
+  // Добавляем прослушивание по портам
   server.addTcp(port);
   server.addUdp(port);
+
+  // Добавляем обработчик сообщений
   server.setRootMiddleware(makeRootMiddleware());
   std::cout << "opened server on the port " << port << std::endl;
-  server.run(thread_count);
+  try {
+
+    // Запускаем сервер
+    server.run(thread_count);
+  } catch (...) {
+  }
   return 0;
 }
 

@@ -11,18 +11,30 @@
 #include <vector>
 namespace ndm {
 
+// MAX EVENTS для epoll
 #define MAX_EVENTS 10
+// Для сокетов
 #define CONNECTION_MAX_SIZE 10
+// Буфер для сообщений серверу
 #define BUFFER_SIZE 1024
+
+// Сервер. Добавить порты, добавить головной обработчик, запустить и радоваться
+// По-хорошему нужен логгер, но мне лень. Это всё-таки тестовое
 class NdmServer {
 public:
   NdmServer();
   ~NdmServer();
+  // Добавление портов
   void addTcp(int port);
   void addUdp(int port);
+
+  // Запуск сервера. thread_count - количество потоков
   void run(int thread_count);
+
+  // Остановка сервера
   void stop();
 
+  // Установка корневого обработчика запроса
   void setRootMiddleware(std::shared_ptr<MiddlewareBase> value);
   std::shared_ptr<MiddlewareBase> getRootMiddleware();
 

@@ -3,6 +3,7 @@
 
 #include "middleware_base.h"
 namespace ndm {
+// Просто зеркалит сообщение
 class MirrorMiddleware : public MiddlewareBase {
 public:
   MirrorMiddleware() : MiddlewareBase() {}

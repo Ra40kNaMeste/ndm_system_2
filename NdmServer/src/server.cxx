@@ -55,6 +55,7 @@ void ndm::NdmServer::addTcp(int port) {
   }
   _listenTcpSockets.push_back(tcp_sock);
 }
+
 void ndm::NdmServer::addUdp(int port) {
   int udp_sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
   if (udp_sock == -1) {
@@ -71,11 +72,15 @@ void ndm::NdmServer::addUdp(int port) {
 }
 
 void ndm::NdmServer::run(int thread_count) {
+  if (_isRunning) {
+    return;
+  }
   _isRunning = true;
   pthread_t threads[thread_count];
   for (int i = 0; i < thread_count; ++i) {
     pthread_create(threads + i, NULL, listenThread, this);
   }
+
   startListenSockets();
   while (_isRunning) {
     sleep(1);
@@ -89,15 +94,19 @@ void ndm::NdmServer::run(int thread_count) {
   }
 }
 
+// Главный гвоздь задания. Прокоментирую его
 void *ndm::NdmServer::listenThread(void *args) {
   auto instance = static_cast<NdmServer *>(args);
   struct epoll_event events[MAX_EVENTS];
   int conn_sock, nfds, epollfd;
 
+  // Создание epoll. В каждом потоке он нужен
   epollfd = epoll_create1(0);
   if (epollfd == -1) {
     throw std::runtime_error("epoll create");
   }
+
+  // Присоединяем к нему tcp и udp сокеты
   struct epoll_event ev{EPOLLIN | EPOLLET};
   for (int sock : instance->_listenUdpSockets) {
     ev.data.fd = sock;
@@ -112,8 +121,10 @@ void *ndm::NdmServer::listenThread(void *args) {
     }
   }
 
+  // Пускаем цикл обработки
   while (instance->_isRunning) {
 
+    // Ловим события
     nfds = epoll_wait(epollfd, events, MAX_EVENTS, -1);
     if (nfds == -1) {
       perror("epoll_wait");
@@ -121,6 +132,7 @@ void *ndm::NdmServer::listenThread(void *args) {
     }
 
     for (int n = 0; n < nfds; ++n) {
+      // Обрабатываем их
       if (std::find(instance->_listenTcpSockets.begin(),
                     instance->_listenTcpSockets.end(),
                     events[n].data.fd) != instance->_listenTcpSockets.end()) {
@@ -181,6 +193,7 @@ void *ndm::NdmServer::listenThread(void *args) {
     }
   }
 
+  // Закрываем порты
   ev.events = EPOLLIN | EPOLLET;
   for (int sock : instance->_listenUdpSockets) {
     ev.data.fd = sock;
@@ -224,17 +237,20 @@ ndm::NdmServer::requestHandle(const char *buf, const int &size_buf,
   if (_root_middleware == nullptr) {
     return 0;
   }
-  auto request = std::make_shared<RequestContext>(buf, size_buf);
-  request->setUsers(&_users);
+  auto request = std::make_shared<RequestContext>(buf, size_buf, &_users);
 
   auto response = std::make_shared<ResponseContext>();
 
-  _root_middleware->handle_request(request, response);
-  if (response->canShutdown()) {
-    _isRunning = false;
+  try {
+    _root_middleware->handle_request(request, response);
+  } catch (...) {
+    // Мы обеспокоены логами
   }
   if (send(response->response.data(), response->response.size()) == -1) {
     return -1;
+  }
+  if (response->canShutdown()) {
+    stop();
   }
 
   return 0;
@@ -246,6 +262,12 @@ void ndm::NdmServer::setRootMiddleware(
 }
 std::shared_ptr<ndm::MiddlewareBase> ndm::NdmServer::getRootMiddleware() {
   return _root_middleware;
+}
+
+void ndm::NdmServer::stop() {
+  pthread_mutex_lock(&_isRunningMutex);
+  _isRunning = false;
+  pthread_mutex_unlock(&_isRunningMutex);
 }
 
 #endif // !NDM_SERVER_CXX

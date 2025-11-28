@@ -10,6 +10,9 @@
 #include <set>
 
 namespace ndm {
+// Выполняет команды. Команды регистрируются в addCommand. Все команды
+// начинаются на /. Если команда не найдена - сообщает об этом. Если сообщение -
+// не команда - передаёт дальше
 class CommandMiddleware : public MiddlewareBase {
 public:
   CommandMiddleware() : MiddlewareBase() {}

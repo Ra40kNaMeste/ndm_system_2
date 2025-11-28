@@ -4,6 +4,8 @@
 #include <ctime>
 namespace ndm {
 
+// Время, в течении которого при бездействии пользователя он будет считаться
+// подключённым
 #define MAX_CONNECTION_TIMEOUT 5
 class User {
 public:

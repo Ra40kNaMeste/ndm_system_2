@@ -1,4 +1,4 @@
-pkgname=ndm-system
+pkgname=ndm-server
 pkgver=1.2
 pkgrel=1
 arch=('x86_64')

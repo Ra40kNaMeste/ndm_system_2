@@ -10,6 +10,7 @@ public:
   MiddlewareBase() {}
   virtual ~MiddlewareBase() {}
 
+  // Обработка запроса
   virtual void handle_request(std::shared_ptr<const RequestContext> request,
                               std::shared_ptr<ResponseContext> response) {}
 
