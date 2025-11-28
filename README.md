@@ -15,7 +15,7 @@
 ## Установка
 ### docker (рекомендуется)
 ```bash
-docker build -t ndmsystem
+docker build -t ndmsystem .
 docker run -p 1010:1010 -p 1010:1010/udp ndmserver
 ```
 
@@ -33,6 +33,7 @@ apt-get install ndmserver*.deb
 ```
 
 ### Сборка из исходников
+Установите пакеты с g++, make и libboost-program-options-dev (пример с ubuntu)
 Склонируйте репозиторий и соберите
 ```bash
 make
